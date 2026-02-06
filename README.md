@@ -11,6 +11,7 @@ A REST API built with Laravel for managing users, products, and orders. It inclu
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
+- [Testing](#testing)
 - [Project Structure](#project-structure)
 - [API Overview](#api-overview)
 - [License](#license)
@@ -32,7 +33,7 @@ A REST API built with Laravel for managing users, products, and orders. It inclu
 - Form Request validation for all inputs
 - Centralized API response format (`ApiResponse`)
 - Custom exception handling for API (validation, 401, 404)
-- Mailable classes for user-creation and admin-notification emails
+- Mailable classes for user-creation and admin-notification emails (notifications are sent to every user with the **administrator** role who is active)
 
 ---
 
@@ -126,6 +127,38 @@ php artisan queue:work
 
 ---
 
+## Testing
+
+The project includes **unit tests** and **feature tests** (PHPUnit). Tests use an in-memory SQLite database and array mail driver by default (`phpunit.xml`).
+
+### Run all tests
+
+```bash
+php artisan test
+```
+
+Or with PHPUnit directly:
+
+```bash
+./vendor/bin/phpunit
+```
+
+### Test suites
+
+| Suite   | Directory       | Description |
+|---------|-----------------|-------------|
+| **Unit**   | `tests/Unit`   | `ApiResponseTest`, `UserModelTest`, `ProductModelTest`, `OrderModelTest`, etc. |
+| **Feature**| `tests/Feature`| `AuthApiTest`, `UserApiTest`, `ProductApiTest`, `OrderApiTest`, etc. |
+
+### Run a specific suite
+
+```bash
+php artisan test --testsuite=Unit
+php artisan test --testsuite=Feature
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -168,6 +201,9 @@ api-user-service/
 │   ├── api.php                         # All API routes (prefix: /api)
 │   ├── web.php
 │   └── console.php
+├── tests/
+│   ├── Unit/                           # Unit tests (models, ApiResponse, etc.)
+│   └── Feature/                        # Feature/API tests (Auth, User, Product, Order)
 ├── storage/logs/
 ├── .env.example
 ├── composer.json
@@ -214,7 +250,7 @@ Base path: **`/api`**. Send **`Accept: application/json`** (and **`Content-Type:
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/login` | No | Login; returns Bearer token and user info |
-| POST | `/api/users` | No | Create user; sends confirmation + admin emails |
+| POST | `/api/users` | No | Create user; sends confirmation email to new user + notification to every user with **administrator** role (active) |
 | GET | `/api/users` | Bearer token | List users (paginated, search, sort); includes `orders_count`, `can_edit` |
 | POST | `/api/products` | Bearer token | Create product |
 | GET | `/api/products` | Bearer token | List all products |
@@ -225,6 +261,12 @@ Base path: **`/api`**. Send **`Accept: application/json`** (and **`Content-Type:
 - **Login:** `POST /api/login` with `email` and `password`; response includes `token`.
 - **Protected routes:** Send header **`Authorization: Bearer <token>`**.
 - **User roles:** `administrator`, `manager`, `user`. Used for `can_edit` on GET `/api/users` (admin: all; manager: only `user` role; user: only self).
+
+### Email on new user registration
+
+When `POST /api/users` succeeds:
+- **Confirmation email** is sent to the new user’s email address (`AccountCreatedMail`).
+- **Notification email** is sent to **every user whose role is `administrator` and who is active** (`NewUserNotificationMail`), so all admins are notified of the new user.
 
 ### Example: create user
 
